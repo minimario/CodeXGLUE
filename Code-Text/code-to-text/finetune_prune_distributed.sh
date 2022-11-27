@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=3,4
 cd code
 lang=ruby #programming language
 lr=5e-5
@@ -13,7 +13,7 @@ dev_file=$data_dir/$lang/valid.jsonl
 epochs=10 
 pretrained_model=microsoft/codebert-base #Roberta: roberta-base
 
-python run.py \
+python -m torch.distributed.launch --nproc_per_node=2 run.py \
     --do_train \
     --do_eval \
     --prune \

@@ -53,7 +53,10 @@ def see_weight_rate(model):
     return 100*zero_sum/sum_list
 
 def rewind_model(model, orig_dict):
-    model_dict = model.state_dict()
+    if hasattr(model, 'module'):
+        model_dict = model.module.state_dict()
+    else:
+        model_dict = model.state_dict()
     model_dict.update(orig_dict)
     if hasattr(model, 'module'):
         model.module.load_state_dict(model_dict)
