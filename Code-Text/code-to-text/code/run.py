@@ -354,7 +354,7 @@ def main():
                 its += 1
                 batch = tuple(t.to(device) for t in batch)
                 source_ids,source_mask,target_ids,target_mask = batch
-		loss,_,_ = model(source_ids=source_ids,source_mask=source_mask,target_ids=target_ids,target_mask=target_mask)
+                loss,_,_ = model(source_ids=source_ids,source_mask=source_mask,target_ids=target_ids,target_mask=target_mask)
                 if args.n_gpu > 1:
                     loss = loss.mean() # mean() to average on multi-gpu.
                 if args.gradient_accumulation_steps > 1:
@@ -398,10 +398,8 @@ def main():
                 logger.info("%d:  Batch size = %d", args.local_rank, args.eval_batch_size)
 
                 #Start Evaling model
-                print("eval")
                 model.eval()
                 eval_loss,tokens_num = 0,0
-                print("start")
                 for batch in bar:
                     batch = tuple(t.to(device) for t in batch)
                     source_ids,source_mask,target_ids,target_mask = batch                  
