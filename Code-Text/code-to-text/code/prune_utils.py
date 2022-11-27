@@ -1,0 +1,83 @@
+import torch
+import torch.nn.utils.prune as prune
+
+def prune_model(model, pruning_ratio):
+    print("start pruning")
+    parameters_to_prune = []
+    if hasattr(model, 'module'):
+        model = model.module
+    for i in range(12):
+        parameters_to_prune.append((model.encoder.encoder.layer[i].attention.self.query, 'weight'))
+        parameters_to_prune.append((model.encoder.encoder.layer[i].attention.self.key, 'weight'))
+        parameters_to_prune.append((model.encoder.encoder.layer[i].attention.self.value, 'weight'))
+        parameters_to_prune.append((model.encoder.encoder.layer[i].attention.output.dense, 'weight'))
+        parameters_to_prune.append((model.encoder.encoder.layer[i].intermediate.dense, 'weight'))
+        parameters_to_prune.append((model.encoder.encoder.layer[i].output.dense, 'weight'))
+    parameters_to_prune.append((model.encoder.pooler.dense, 'weight'))
+    parameters_to_prune = tuple(parameters_to_prune)
+    print("got parameters to prune")
+    prune.global_unstructured(
+        parameters_to_prune,
+        pruning_method=prune.L1Unstructured,
+        amount=pruning_ratio,
+    )
+    print("finished pruning")
+
+def see_weight_rate(model):
+    if hasattr(model, 'module'):
+        model = model.module
+    sum_list = 0
+    zero_sum = 0
+    for ii in range(12):
+        sum_list = sum_list+float(model.encoder.encoder.layer[ii].attention.self.query.weight.nelement())
+        zero_sum = zero_sum+float(torch.sum(model.encoder.encoder.layer[ii].attention.self.query.weight == 0))
+
+        sum_list = sum_list+float(model.encoder.encoder.layer[ii].attention.self.key.weight.nelement())
+        zero_sum = zero_sum+float(torch.sum(model.encoder.encoder.layer[ii].attention.self.key.weight == 0))
+
+        sum_list = sum_list+float(model.encoder.encoder.layer[ii].attention.self.value.weight.nelement())
+        zero_sum = zero_sum+float(torch.sum(model.encoder.encoder.layer[ii].attention.self.value.weight == 0))
+
+        sum_list = sum_list+float(model.encoder.encoder.layer[ii].attention.output.dense.weight.nelement())
+        zero_sum = zero_sum+float(torch.sum(model.encoder.encoder.layer[ii].attention.output.dense.weight == 0))
+
+        sum_list = sum_list+float(model.encoder.encoder.layer[ii].intermediate.dense.weight.nelement())
+        zero_sum = zero_sum+float(torch.sum(model.encoder.encoder.layer[ii].intermediate.dense.weight == 0))
+
+        sum_list = sum_list+float(model.encoder.encoder.layer[ii].output.dense.weight.nelement())
+        zero_sum = zero_sum+float(torch.sum(model.encoder.encoder.layer[ii].output.dense.weight == 0))
+    
+    sum_list = sum_list+float(model.encoder.pooler.dense.weight.nelement())
+    zero_sum = zero_sum+float(torch.sum(model.encoder.pooler.dense.weight == 0))
+
+    return 100*zero_sum/sum_list
+
+def rewind_model(model, orig_dict):
+    model_dict = model.state_dict()
+    model_dict.update(orig_dict)
+    if hasattr(model, 'module'):
+        model.module.load_state_dict(model_dict)
+    else:
+        model.load_state_dict(model_dict)
+
+def capture_orig_state_dict(orig_weights):
+    recover_dict = {}
+    name_list = []
+    for ii in range(12):
+        name_list.append('encoder.encoder.layer.'+str(ii)+'.attention.self.query.weight')
+        name_list.append('encoder.encoder.layer.'+str(ii)+'.attention.self.key.weight')
+        name_list.append('encoder.encoder.layer.'+str(ii)+'.attention.self.value.weight')
+        name_list.append('encoder.encoder.layer.'+str(ii)+'.attention.output.dense.weight')
+        name_list.append('encoder.encoder.layer.'+str(ii)+'.intermediate.dense.weight')
+        name_list.append('encoder.encoder.layer.'+str(ii)+'.output.dense.weight')
+    name_list.append('encoder.pooler.dense.weight')
+
+    for key in orig_weights.keys():
+        if key in name_list:
+            new_key = key+'_orig'
+        else:
+            new_key = key
+        recover_dict[new_key] = orig_weights[key]
+
+    return recover_dict
+

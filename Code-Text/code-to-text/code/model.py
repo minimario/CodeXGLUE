@@ -20,7 +20,7 @@ class Seq2Seq(nn.Module):
         * `sos_id`- start of symbol ids in target for beam search.
         * `eos_id`- end of symbol ids in target for beam search. 
     """
-    def __init__(self, encoder,decoder,config,beam_size=None,max_length=None,sos_id=None,eos_id=None):
+    def __init__(self, encoder,decoder,config,beam_size=None,max_length=None,sos_id=None,eos_id=None,device="cpu"):
         super(Seq2Seq, self).__init__()
         self.encoder = encoder
         self.decoder=decoder
@@ -35,6 +35,7 @@ class Seq2Seq(nn.Module):
         self.max_length=max_length
         self.sos_id=sos_id
         self.eos_id=eos_id
+        self.device=device
         
     def _tie_or_clone_weights(self, first_module, second_module):
         """ Tie or clone module weights depending of weither we are using TorchScript or not
@@ -74,11 +75,14 @@ class Seq2Seq(nn.Module):
         else:
             #Predict 
             preds=[]       
-            zero=torch.cuda.LongTensor(1).fill_(0)     
+            if self.device.type != "cpu":
+                zero=torch.cuda.LongTensor(1).fill_(0)     
+            else:
+                zero=torch.LongTensor(1).fill_(0)     
             for i in range(source_ids.shape[0]):
                 context=encoder_output[:,i:i+1]
                 context_mask=source_mask[i:i+1,:]
-                beam = Beam(self.beam_size,self.sos_id,self.eos_id)
+                beam = Beam(self.beam_size,self.sos_id,self.eos_id,self.device)
                 input_ids=beam.getCurrentState()
                 context=context.repeat(1, self.beam_size,1)
                 context_mask=context_mask.repeat(self.beam_size,1)
@@ -105,9 +109,12 @@ class Seq2Seq(nn.Module):
         
 
 class Beam(object):
-    def __init__(self, size,sos,eos):
+    def __init__(self, size,sos,eos,cpu=torch.device("cpu")):
         self.size = size
-        self.tt = torch.cuda
+        if cpu.type != "cpu":
+            self.tt = torch.cuda
+        else:
+            self.tt = torch
         # The score for each translation on the beam.
         self.scores = self.tt.FloatTensor(size).zero_()
         # The backpointers at each time-step.
@@ -152,7 +159,8 @@ class Beam(object):
             # Don't let EOS have children.
             for i in range(self.nextYs[-1].size(0)):
                 if self.nextYs[-1][i] == self._eos:
-                    beamLk[i] = -1e20
+                    beamLk[i] = float("-inf")
+                    # beamLk[i] = -1e20
         else:
             beamLk = wordLk[0]
         flatBeamLk = beamLk.view(-1)
