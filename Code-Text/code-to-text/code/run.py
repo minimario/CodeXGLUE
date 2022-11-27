@@ -273,7 +273,11 @@ def main():
     logger.warning("loading model from path if necessary")
     if args.load_model_path is not None:
         logger.info("reload model from {}".format(args.load_model_path))
-        model.load_state_dict(torch.load(args.load_model_path))
+        if not args.prune:
+            model.load_state_dict(torch.load(args.load_model_path))
+        elif args.prune:
+            state_dict = torch.load(args.load_model_path)
+
 
     model.to(device)
     if args.local_rank != -1:
