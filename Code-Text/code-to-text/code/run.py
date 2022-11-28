@@ -233,6 +233,8 @@ def main():
                         help="Quantize for inference") 
     parser.add_argument("--prune", action='store_true',
                         help="whether to prune the model") 
+    parser.add_argument("--prune_method", type=str, default="l1", 
+                        help="how to prune (l1 or random)") 
 
     # print arguments
     args = parser.parse_args()
@@ -261,7 +263,7 @@ def main():
     tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,do_lower_case=args.do_lower_case)
     
     #budild model
-    logger.warning("building model")
+    logger.info("building model")
     encoder = model_class.from_pretrained(args.model_name_or_path,config=config)    
     decoder_layer = nn.TransformerDecoderLayer(d_model=config.hidden_size, nhead=config.num_attention_heads)
     decoder = nn.TransformerDecoder(decoder_layer, num_layers=6)
@@ -270,14 +272,16 @@ def main():
                   sos_id=tokenizer.cls_token_id,eos_id=tokenizer.sep_token_id,
                   device=device)
     # model.half()
-    logger.warning("loading model from path if necessary")
     if args.load_model_path is not None:
         logger.info("reload model from {}".format(args.load_model_path))
         if not args.prune:
             model.load_state_dict(torch.load(args.load_model_path))
         elif args.prune:
-            state_dict = torch.load(args.load_model_path)
-
+            logger.info("loading pruned model")
+            orig_state_dict = torch.load(args.load_model_path)
+            new_state_dict = prune_utils.modify_state_dict(orig_state_dict)
+            model.load_state_dict(new_state_dict)
+            logger.info(f"{prune_utils.see_weight_rate(model)} are zeros")
 
     model.to(device)
     if args.local_rank != -1:
@@ -345,12 +349,22 @@ def main():
             else:
                 orig_dict = prune_utils.capture_orig_state_dict(model.state_dict())
         for epoch in range(args.num_train_epochs):
-            if epoch > 0 and args.prune:
-                optimizer, scheduler = prepare_optimizer_and_scheduler()
-                prune_ratio = 1/(args.num_train_epochs - epoch + 1)
-                prune_utils.prune_model(model, prune_ratio)
-                print("% of zeros: ", prune_utils.see_weight_rate(model))
-                prune_utils.rewind_model(model, orig_dict)
+            if args.load_model_path is not None:
+                # prune at the get go since we're finetuning
+                if epoch >= 0 and args.prune:
+                    optimizer, scheduler = prepare_optimizer_and_scheduler()
+                    prune_ratio = 1/(args.num_train_epochs - epoch)
+                    prune_utils.prune_model(model, prune_ratio, method=args.prune_method)
+                    logger.info(f"percentage of zeros: {prune_utils.see_weight_rate(model)}")
+                    prune_utils.rewind_model(model, orig_dict)
+            else:
+                # prune only after training one epoch
+                if epoch >= 1 and args.prune:
+                    optimizer, scheduler = prepare_optimizer_and_scheduler()
+                    prune_ratio = 1/(args.num_train_epochs - epoch + 1)
+                    prune_utils.prune_model(model, prune_ratio, method=args.prune_method)
+                    logger.info(f"percentage of zeros: {prune_utils.see_weight_rate(model)}")
+                    prune_utils.rewind_model(model, orig_dict)
 
             bar = tqdm(train_dataloader,total=len(train_dataloader))
             its = 0

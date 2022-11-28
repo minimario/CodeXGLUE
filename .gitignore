@@ -4,6 +4,7 @@
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
 # Model files
+Code-Text/code-to-text/dataset/*
 Code-Text/code-to-text/code/model/*
 
 # User-specific files

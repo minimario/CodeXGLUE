@@ -1,8 +1,7 @@
 import torch
 import torch.nn.utils.prune as prune
 
-def prune_model(model, pruning_ratio):
-    print("start pruning")
+def prune_model(model, pruning_ratio, method):
     parameters_to_prune = []
     if hasattr(model, 'module'):
         model = model.module
@@ -15,13 +14,20 @@ def prune_model(model, pruning_ratio):
         parameters_to_prune.append((model.encoder.encoder.layer[i].output.dense, 'weight'))
     parameters_to_prune.append((model.encoder.pooler.dense, 'weight'))
     parameters_to_prune = tuple(parameters_to_prune)
-    print("got parameters to prune")
+    # random pruning
+
+    if method == "l1":
+        pruning_method = prune.L1Unstructured
+    elif method == "random":
+        pruning_method = prune.RandomUnstructured
+    else:
+        raise NotImplementedError 
+
     prune.global_unstructured(
         parameters_to_prune,
-        pruning_method=prune.L1Unstructured,
+        pruning_method=pruning_method,
         amount=pruning_ratio,
     )
-    print("finished pruning")
 
 def see_weight_rate(model):
     if hasattr(model, 'module'):
@@ -84,3 +90,22 @@ def capture_orig_state_dict(orig_weights):
 
     return recover_dict
 
+def modify_state_dict(state_dict):
+    """
+    Takes a state dict of a pruned model and returns
+    a state dict of the corresponding unpruned model.
+    Pruned elements are 0.
+    """
+    new_state_dict = {}
+    # multiply the _orig and the _mask
+    for key in state_dict.keys():
+        if "_orig" in key:
+            orig_key = key
+            mask_key = key.replace("_orig", "_mask")
+            new_key = key.replace("_orig", "")
+            new_state_dict[new_key] = state_dict[orig_key] * state_dict[mask_key]
+        elif "_mask" in key:
+            continue
+        else:
+            new_state_dict[key] = state_dict[key]
+    return new_state_dict
