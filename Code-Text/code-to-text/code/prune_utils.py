@@ -19,11 +19,13 @@ def prune_model(model, pruning_ratio, method):
     prune_args = {"amount": pruning_ratio}
     if method == "l1":
         pruning_method = prune.L1Unstructured
-    if method == "l1_structured":
+    elif method == "l1_structured":
         pruning_method = prune.LnStructured
         prune_args["n"] = 1
     elif method == "random":
         pruning_method = prune.RandomUnstructured
+    elif method == "random_structured":
+        method = prune.RandomStructured
     else:
         raise NotImplementedError 
 
