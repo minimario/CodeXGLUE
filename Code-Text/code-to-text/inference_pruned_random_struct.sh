@@ -5,19 +5,19 @@ beam_size=10
 source_length=256
 target_length=128
 data_dir=../dataset
-output_dir=model/$lang\_dec4_pruned_best_random_struct
+output_dir=model/ruby_pruned_random_structured
 batch_size=16
 dev_file=$data_dir/$lang/valid.jsonl
 test_file=$data_dir/$lang/test.jsonl
 
-device=(1 1 3 3 4 4 6 6 7 7)
+# device=(1 1 3 3 4 4 6 6 7 7)
 
-for i in 0 1 2 3 4 5 6 7 8 9
+for i in 0 1 2 3 4 5 6
 do
-    device_id=${device[$i]}
+    # device_id=${device[$i]}
     checkpoint_id=$((i))
-    test_model=$output_dir/checkpoint-$checkpoint_id/pytorch_model.bin
-    export CUDA_VISIBLE_DEVICES=$device_id
+    test_model=$output_dir/checkpoint-0-while-$checkpoint_id/pytorch_model.bin
+    # export CUDA_VISIBLE_DEVICES=$device_id
     python run.py \
         --do_test \
         --prune \
