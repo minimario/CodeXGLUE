@@ -30,4 +30,4 @@ python run.py \
     --learning_rate $lr \
     --prune_method l1 \
     --pruned_layer decoder
-    --num_train_epochs $epochs 2>&1 | tee pruned_logs/finetune_l1_pruning.log &
+    --num_train_epochs $epochs 2>&1 | tee pruned_logs/finetune_l1_pruning_decoder.log &
