@@ -23,17 +23,23 @@ def prune_model(model, pruning_ratio, method, layer):
     parameters_to_prune = tuple(parameters_to_prune)
     # random pruning
 
+    prune_args = {"amount": pruning_ratio}
     if method == "l1":
         pruning_method = prune.L1Unstructured
+    elif method == "l1_structured":
+        pruning_method = prune.LnStructured
+        prune_args["n"] = 1
     elif method == "random":
         pruning_method = prune.RandomUnstructured
+    elif method == "random_structured":
+        method = prune.RandomStructured
     else:
         raise NotImplementedError 
 
     prune.global_unstructured(
         parameters_to_prune,
         pruning_method=pruning_method,
-        amount=pruning_ratio,
+        **prune_args
     )
 
 def see_weight_rate(model, layer):
