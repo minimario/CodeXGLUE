@@ -160,7 +160,7 @@ def set_seed(seed=42):
 def main():
     parser = argparse.ArgumentParser()
 
-    ## Required parameters  
+    # Required parameters
     parser.add_argument("--model_type", default=None, type=str, required=True,
                         help="Model type: e.g. roberta")
     parser.add_argument("--model_name_or_path", default=None, type=str, required=True,
@@ -169,7 +169,7 @@ def main():
                         help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument("--load_model_path", default=None, type=str, 
                         help="Path to trained model: Should contain the .bin files" )    
-    ## Other parameters
+    # Other parameters
     parser.add_argument("--train_filename", default=None, type=str, 
                         help="The train filename. Should contain the .jsonl files for this task.")
     parser.add_argument("--dev_filename", default=None, type=str, 
@@ -234,7 +234,9 @@ def main():
     parser.add_argument("--prune", action='store_true',
                         help="whether to prune the model") 
     parser.add_argument("--prune_method", type=str, default="l1", 
-                        help="how to prune (l1 or random)") 
+                        help="how to prune (l1 or random)")
+    parser.add_argument("--pruned_layer", type=str, default="encoder",
+                        help="prune encoder and/or decoder")
 
     # print arguments
     args = parser.parse_args()
@@ -262,7 +264,7 @@ def main():
     config = config_class.from_pretrained(args.config_name if args.config_name else args.model_name_or_path)
     tokenizer = tokenizer_class.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path,do_lower_case=args.do_lower_case)
     
-    #budild model
+    #build model
     logger.info("building model")
     encoder = model_class.from_pretrained(args.model_name_or_path,config=config)    
     decoder_layer = nn.TransformerDecoderLayer(d_model=config.hidden_size, nhead=config.num_attention_heads)
@@ -281,7 +283,7 @@ def main():
             orig_state_dict = torch.load(args.load_model_path)
             new_state_dict = prune_utils.modify_state_dict(orig_state_dict)
             model.load_state_dict(new_state_dict)
-            logger.info(f"{prune_utils.see_weight_rate(model)} are zeros")
+            logger.info(f"{prune_utils.see_weight_rate(model, layer=args.pruned_layer)} are zeros")
 
     model.to(device)
     if args.local_rank != -1:
@@ -345,25 +347,25 @@ def main():
         
         if args.prune:
             if hasattr(model, 'module'):
-                orig_dict = prune_utils.capture_orig_state_dict(model.module.state_dict())
+                orig_dict = prune_utils.capture_orig_state_dict(model.module.state_dict(), layer=args.pruned_layer)
             else:
-                orig_dict = prune_utils.capture_orig_state_dict(model.state_dict())
+                orig_dict = prune_utils.capture_orig_state_dict(model.state_dict(), layer=args.pruned_layer)
         for epoch in range(args.num_train_epochs):
             if args.load_model_path is not None:
                 # prune at the get go since we're finetuning
                 if epoch >= 0 and args.prune:
                     optimizer, scheduler = prepare_optimizer_and_scheduler()
                     prune_ratio = 1/(args.num_train_epochs - epoch)
-                    prune_utils.prune_model(model, prune_ratio, method=args.prune_method)
-                    logger.info(f"percentage of zeros: {prune_utils.see_weight_rate(model)}")
+                    prune_utils.prune_model(model, prune_ratio, method=args.prune_method, layer=args.pruned_layer)
+                    logger.info(f"percentage of zeros: {prune_utils.see_weight_rate(model, layer=args.pruned_layer)}")
                     prune_utils.rewind_model(model, orig_dict)
             else:
                 # prune only after training one epoch
                 if epoch >= 1 and args.prune:
                     optimizer, scheduler = prepare_optimizer_and_scheduler()
                     prune_ratio = 1/(args.num_train_epochs - epoch + 1)
-                    prune_utils.prune_model(model, prune_ratio, method=args.prune_method)
-                    logger.info(f"percentage of zeros: {prune_utils.see_weight_rate(model)}")
+                    prune_utils.prune_model(model, prune_ratio, method=args.prune_method, layer=args.pruned_layer)
+                    logger.info(f"percentage of zeros: {prune_utils.see_weight_rate(model, layer=args.pruned_layer)}")
                     prune_utils.rewind_model(model, orig_dict)
 
             bar = tqdm(train_dataloader,total=len(train_dataloader))
