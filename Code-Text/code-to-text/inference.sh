@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=6
+export CUDA_VISIBLE_DEVICES=7
 cd code
 lang=ruby
 lr=5e-5
@@ -10,10 +10,13 @@ output_dir=model/$lang
 batch_size=16
 dev_file=$data_dir/$lang/valid.jsonl
 test_file=$data_dir/$lang/test.jsonl
-test_model=$output_dir/checkpoint-best-bleu/pytorch_model.bin #checkpoint for test
+# test_model=$output_dir/checkpoint-best-bleu/pytorch_model.bin #checkpoint for test
+test_model=/scratch/gua/Documents2/CodeXGLUE/Code-Text/code-to-text/code/model/ruby_nov27_pruned_best_l1/checkpoint-0/pytorch_model.bin
+# test_model=/scratch/gua/Documents2/CodeXGLUE/Code-Text/code-to-text/code/model/ruby_nov27_pruned_best_random/checkpoint-0/pytorch_model.bin
 
 python run.py \
     --do_test \
+    --prune \
     --model_type roberta \
     --model_name_or_path microsoft/codebert-base \
     --load_model_path $test_model \

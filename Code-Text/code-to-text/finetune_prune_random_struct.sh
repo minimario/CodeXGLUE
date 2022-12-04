@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=7
 cd code
 lang=ruby #programming language
 lr=5e-5
@@ -29,4 +29,4 @@ python run.py \
     --eval_batch_size $batch_size \
     --learning_rate $lr \
     --prune_method random_structured \
-    --num_train_epochs $epochs 2>&1 | tee pruned_logs/finetune_l1_pruning.log &
+    --num_train_epochs $epochs 2>&1 | tee pruned_logs/finetune_random_pruning_structured.log &

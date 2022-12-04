@@ -357,6 +357,15 @@ def main():
                     prune_utils.prune_model(model, prune_ratio, method=args.prune_method)
                     logger.info(f"percentage of zeros: {prune_utils.see_weight_rate(model)}")
                     prune_utils.rewind_model(model, orig_dict)
+
+                    # for debugging, save the model before training
+                    last_output_dir = os.path.join(args.output_dir, f'checkpoint-{epoch}-before')
+                    if not os.path.exists(last_output_dir):
+                        os.makedirs(last_output_dir)
+                    model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+                    output_model_file = os.path.join(last_output_dir, "pytorch_model.bin")
+                    torch.save(model_to_save.state_dict(), output_model_file)                    
+                    # exit()
             else:
                 # prune only after training one epoch
                 if epoch >= 1 and args.prune:
@@ -390,6 +399,16 @@ def main():
                     optimizer.zero_grad()
                     scheduler.step()
                     global_step += 1
+
+                ############### REMOVE THIS ################ 
+                if epoch == 0 and (nb_tr_steps + 1) % 500 == 0:
+                    last_output_dir = os.path.join(args.output_dir, f'checkpoint-{epoch}-while-{(nb_tr_steps + 1) // 500}')
+                    if not os.path.exists(last_output_dir):
+                        os.makedirs(last_output_dir)
+                    model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+                    output_model_file = os.path.join(last_output_dir, "pytorch_model.bin")
+                    torch.save(model_to_save.state_dict(), output_model_file)                    
+            ############### END OF REMOVE THIS BLOCK ################
 
             if args.do_eval:
                 #Eval model with dev dataset
