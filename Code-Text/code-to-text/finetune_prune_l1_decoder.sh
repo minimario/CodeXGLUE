@@ -7,10 +7,10 @@ beam_size=10
 source_length=256
 target_length=128
 data_dir=../dataset
-output_dir=model/$lang\_pruned_random_structured
+output_dir=model/$lang\_pruned_l1_decoder
 train_file=$data_dir/$lang/train.jsonl
 dev_file=$data_dir/$lang/valid.jsonl
-epochs=10 
+epochs=10
 pretrained_model=microsoft/codebert-base
 
 python run.py \
@@ -28,5 +28,6 @@ python run.py \
     --train_batch_size $batch_size \
     --eval_batch_size $batch_size \
     --learning_rate $lr \
-    --prune_method random_structured \
-    --num_train_epochs $epochs 2>&1 | tee pruned_logs/finetune_random_pruning_structured.log &
+    --prune_method l1 \
+    --pruned_layer decoder
+    --num_train_epochs $epochs 2>&1 | tee pruned_logs/finetune_l1_pruning_decoder.log &
