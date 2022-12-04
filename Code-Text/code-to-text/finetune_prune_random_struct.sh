@@ -29,4 +29,4 @@ python run.py \
     --eval_batch_size $batch_size \
     --learning_rate $lr \
     --prune_method random_structured \
-    --num_train_epochs $epochs 2>&1 | tee pruned_logs/finetune_l1_pruning.log &
+    --num_train_epochs $epochs 2>&1 | tee pruned_logs/finetune_random_struc_pruning.log &
