@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=6
+export CUDA_VISIBLE_DEVICES=2
 cd code
 lang=ruby #programming language
 lr=5e-5
@@ -12,12 +12,14 @@ train_file=$data_dir/$lang/train.jsonl
 dev_file=$data_dir/$lang/valid.jsonl
 epochs=10 
 pretrained_model=microsoft/codebert-base
+load_model_path=model/ruby/checkpoint-best-bleu/pytorch_model.bin
 
 python run.py \
     --do_train \
     --do_eval \
     --prune \
     --model_type roberta \
+    --load_model_path $load_model_path \
     --model_name_or_path $pretrained_model \
     --train_filename $train_file \
     --dev_filename $dev_file \
