@@ -5,42 +5,53 @@ def prune_model(model, pruning_ratio, method, layer):
     parameters_to_prune = []
     if hasattr(model, 'module'):
         model = model.module
-    if 'encoder' in layer:
-        for i in range(12):
-            parameters_to_prune.append((model.encoder.encoder.layer[i].attention.self.query, 'weight'))
-            parameters_to_prune.append((model.encoder.encoder.layer[i].attention.self.key, 'weight'))
-            parameters_to_prune.append((model.encoder.encoder.layer[i].attention.self.value, 'weight'))
-            parameters_to_prune.append((model.encoder.encoder.layer[i].attention.output.dense, 'weight'))
-            parameters_to_prune.append((model.encoder.encoder.layer[i].intermediate.dense, 'weight'))
-            parameters_to_prune.append((model.encoder.encoder.layer[i].output.dense, 'weight'))
-        parameters_to_prune.append((model.encoder.pooler.dense, 'weight'))
-    if 'decoder' in layer:
-        for i in range(6):
-            parameters_to_prune.append((model.decoder.layers[i].self_attn.out_proj, 'weight'))
-            parameters_to_prune.append((model.decoder.layers[i].multihead_attn.out_proj, 'weight'))
-            parameters_to_prune.append((model.decoder.layers[i].linear1, 'weight'))
-            parameters_to_prune.append((model.decoder.layers[i].linear2, 'weight'))
-    parameters_to_prune = tuple(parameters_to_prune)
-    # random pruning
+    if 'structured' not in method:
+        if 'encoder' in layer:
+            for i in range(12):
+                parameters_to_prune.append((model.encoder.encoder.layer[i].attention.self.query, 'weight'))
+                parameters_to_prune.append((model.encoder.encoder.layer[i].attention.self.key, 'weight'))
+                parameters_to_prune.append((model.encoder.encoder.layer[i].attention.self.value, 'weight'))
+                parameters_to_prune.append((model.encoder.encoder.layer[i].attention.output.dense, 'weight'))
+                parameters_to_prune.append((model.encoder.encoder.layer[i].intermediate.dense, 'weight'))
+                parameters_to_prune.append((model.encoder.encoder.layer[i].output.dense, 'weight'))
+            parameters_to_prune.append((model.encoder.pooler.dense, 'weight'))
+        if 'decoder' in layer:
+            for i in range(6):
+                parameters_to_prune.append((model.decoder.layers[i].self_attn.out_proj, 'weight'))
+                parameters_to_prune.append((model.decoder.layers[i].multihead_attn.out_proj, 'weight'))
+                parameters_to_prune.append((model.decoder.layers[i].linear1, 'weight'))
+                parameters_to_prune.append((model.decoder.layers[i].linear2, 'weight'))
+        parameters_to_prune = tuple(parameters_to_prune)
+        # random pruning
 
-    prune_args = {"amount": pruning_ratio}
-    if method == "l1":
-        pruning_method = prune.L1Unstructured
-    elif method == "l1_structured":
-        pruning_method = prune.LnStructured
-        prune_args["n"] = 1
-    elif method == "random":
-        pruning_method = prune.RandomUnstructured
-    elif method == "random_structured":
-        method = prune.RandomStructured
-    else:
-        raise NotImplementedError 
+        if method == "l1":
+            pruning_method = prune.L1Unstructured
+        elif method == "random":
+            pruning_method = prune.RandomUnstructured
+        else:
+            raise NotImplementedError 
 
-    prune.global_unstructured(
-        parameters_to_prune,
-        pruning_method=pruning_method,
-        **prune_args
-    )
+        prune.global_unstructured(
+            parameters_to_prune,
+            pruning_method=pruning_method,
+            amount=pruning_ratio
+        )
+    elif 'structured' in method:
+        if 'encoder' in layer:
+            for i in range(12):
+                prune.global_unstructured([(model.encoder.encoder.layer[i].attention.self.query, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
+                prune.global_unstructured([(model.encoder.encoder.layer[i].attention.self.key, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
+                prune.global_unstructured([(model.encoder.encoder.layer[i].attention.self.value, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
+                prune.global_unstructured([(model.encoder.encoder.layer[i].attention.self.dense, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
+                prune.global_unstructured([(model.encoder.encoder.layer[i].intermediate.dense, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
+                prune.global_unstructured([(model.encoder.encoder.layer[i].output.dense, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
+            prune.global_unstructured([(model.encoder.pooler.dense, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
+        if 'decoder' in layer:
+            for i in range(6):
+                prune.global_unstructured([(model.decoder.layers[i].self_attn.out_proj, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
+                prune.global_unstructured([(model.decoder.layers[i].multihead_attn.out_proj, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
+                prune.global_unstructured([(model.decoder.layers[i].linear1, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
+                prune.global_unstructured([(model.decoder.layers[i].linear2, 'weight')], pruning_method=prune.L1Unstructured, amount=pruning_ratio)
 
 def see_weight_rate(model, layer):
     if hasattr(model, 'module'):
